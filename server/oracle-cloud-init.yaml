@@ -1,0 +1,72 @@
+#cloud-config
+# ─────────────────────────────────────────────────────────────
+# AI News Bot n8n — автоматичне розгортання на Oracle Cloud Always Free
+# Вставити цей текст при створенні VM: Advanced options → Cloud-init.
+# ПЕРЕД ВСТАВКОЮ: заміни AI News Bot.duckdns.org на свій DuckDNS-субдомен (рядок DOMAIN).
+# ─────────────────────────────────────────────────────────────
+package_update: true
+packages:
+  - ca-certificates
+  - curl
+  - iptables-persistent
+
+write_files:
+  - path: /opt/n8n/docker-compose.yml
+    permissions: '0644'
+    content: |
+      services:
+        caddy:
+          image: caddy:2
+          restart: unless-stopped
+          ports:
+            - "80:80"
+            - "443:443"
+          environment:
+            - DOMAIN=${DOMAIN}
+          volumes:
+            - ./Caddyfile:/etc/caddy/Caddyfile:ro
+            - caddy_data:/data
+            - caddy_config:/config
+          depends_on:
+            - n8n
+        n8n:
+          image: docker.n8n.io/n8nio/n8n
+          restart: unless-stopped
+          environment:
+            - N8N_HOST=${DOMAIN}
+            - N8N_PORT=5678
+            - N8N_PROTOCOL=https
+            - N8N_PROXY_HOPS=1
+            - WEBHOOK_URL=https://${DOMAIN}/
+            - N8N_EDITOR_BASE_URL=https://${DOMAIN}/
+            - GENERIC_TIMEZONE=Europe/Kyiv
+            - TZ=Europe/Kyiv
+            - N8N_RUNNERS_ENABLED=true
+          volumes:
+            - n8n_data:/home/node/.n8n
+      volumes:
+        caddy_data:
+        caddy_config:
+        n8n_data:
+
+  - path: /opt/n8n/Caddyfile
+    permissions: '0644'
+    content: |
+      {$DOMAIN} {
+      	reverse_proxy n8n:5678
+      }
+
+  - path: /opt/n8n/.env
+    permissions: '0644'
+    content: |
+      DOMAIN=AI News Bot.duckdns.org
+
+runcmd:
+  # 1) Docker
+  - curl -fsSL https://get.docker.com | sh
+  # 2) Відкрити 80/443 в ОС (Oracle Ubuntu блокує все, крім SSH)
+  - iptables -I INPUT 1 -p tcp --dport 80  -j ACCEPT
+  - iptables -I INPUT 1 -p tcp --dport 443 -j ACCEPT
+  - netfilter-persistent save
+  # 3) Підняти n8n + Caddy
+  - cd /opt/n8n && docker compose up -d

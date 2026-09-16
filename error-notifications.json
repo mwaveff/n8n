@@ -1,0 +1,67 @@
+{
+  "name": "Error Notifications",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "38dea636-a360-42ff-9c58-26e8b0b749d0",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_ID",
+        "text": "=⚠️ Помилка у workflow «{{ $json.workflow.name }}»\nНода: {{ $json.execution.error.node ? $json.execution.error.node.name : '—' }}\nПовідомлення: {{ $json.execution.error.message }}\nЧас: {{ $now.format('dd.MM HH:mm') }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "8088e83b-1f78-48a7-aedb-ca2e2aede5b7",
+      "name": "Повідомити в TG",
+      "webhookId": "fe846c0a-88a3-48fd-bf25-e2f91a5ec770",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Повідомити в TG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c3bda09f-3435-44b5-b56c-11b2ab1a5c8f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "143a338ed9fd06f16118b764a932e0489b011ec6c802296cae89f5bc112e0cfb"
+  },
+  "nodeGroups": [],
+  "id": "26ImKAoL8Q86WXPG",
+  "tags": []
+}

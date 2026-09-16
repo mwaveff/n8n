@@ -1,0 +1,18 @@
+# IDE / editor
+.idea/
+.vscode/
+
+# Local scratch / assistant outputs
+Claude outputs/
+
+# SSH keys — never commit
+*.key
+*.key.pub
+ssh-key-*
+
+# Secrets & local n8n data — never commit
+.env
+backup-credentials.json
+backup-encryption-key.json
+backup-workflows/
+n8n_backup/

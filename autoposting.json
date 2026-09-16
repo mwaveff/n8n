@@ -1,0 +1,713 @@
+{
+  "name": "Auto-posting",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -784,
+        192
+      ],
+      "id": "9617903d-396a-4bd1-bd6e-e90d39713c47",
+      "name": "Кожні 6 годин"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  { json: { url: 'https://rss.arxiv.org/rss/cs.CV+cs.AI+cs.LG' } },\n  { json: { url: 'https://huggingface.co/blog/feed.xml' } },\n  { json: { url: 'https://blog.google/technology/ai/rss/' } },\n  { json: { url: 'https://openai.com/news/rss.xml' } },\n  { json: { url: 'https://raw.githubusercontent.com/taobojlen/anthropic-rss-feed/main/anthropic_news_rss.xml' } },\n  { json: { url: 'https://ai.meta.com/blog/rss/' } },\n  { json: { url: 'https://bensbites.beehiiv.com/feed' } },\n  { json: { url: 'https://example.com/uk/feed/' } },\n  { json: { url: 'https://example.com/feed/' } }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        192
+      ],
+      "id": "c660aa50-71cf-4240-bbd0-6878f5bcba81",
+      "name": "Список джерел"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        -336,
+        192
+      ],
+      "id": "3ebb6a8c-5b75-4d02-a976-52c4373f57c8",
+      "name": "RSS",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = Date.now();\nconst seen = new Set();\nconst KEYWORDS = ['business','enterprise','roi','automation','retail','llm','agent','vision','detection','deploy','production','case study','customer','cost','revenue'];\nlet out = [];\nfor (const it of items) {\n  const j = it.json;\n  const link = j.link || j.guid;\n  if (!link || seen.has(link)) continue;\n  seen.add(link);\n  const d = new Date(j.pubDate || j.isoDate || 0).getTime();\n  const maxAge = j.isResearch ? 1000 * 60 * 60 * 24 * 30 : 1000 * 60 * 60 * 24;\n  if (!d || now - d > maxAge) continue;\n  const txt = ((j.title || '') + ' ' + (j.contentSnippet || j.content || '')).toLowerCase();\n  const score = KEYWORDS.reduce((s, k) => s + (txt.includes(k) ? 1 : 0), 0) + (/ainewsbot\\.(tech|vision)/i.test(link) ? 10 : 0) + (j.isResearch ? 3 : 0);\n  out.push({ json: { title: j.title, link, content: (j.contentSnippet || j.content || '').slice(0, 1500), pubDate: j.pubDate, isResearch: !!j.isResearch, score } });\n}\nout.sort((a, b) => b.json.score - a.json.score);\nreturn out.slice(0, 2);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        192
+      ],
+      "id": "924031b0-e4c3-4a07-9350-ad3579d8df12",
+      "name": "Фільтр і скоринг"
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "dedupeValue": "={{ $json.link }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        96,
+        192
+      ],
+      "id": "a77fc19a-ffb0-4464-8b5e-b0e5ed47bb3a",
+      "name": "Дедуплікація"
+    },
+    {
+      "parameters": {
+        "jsCode": "const includePromo = Math.random() < 0.2;\nconst promoLine = includePromo\n  ? 'Наприкінці посту додай ОДНЕ коротке ненав\\'язливе речення про AI News Bot: компанія впроваджує AI-рішення, Computer Vision та відео/аудіо аналітику для бізнесу.'\n  : 'НЕ згадуй компанію AI News Bot у тексті цього посту — без жодної реклами.';\nconst baseSystem = (len) => \"Ти — редактор Telegram-каналу «AI Love You» компанії AI News Bot (example.com, example.com). Пишеш про практичний AI для бізнесу.\\n\\nАудиторія: власники бізнесу, директори, маркетологи, керівники ритейлу, e-commerce, логістики, сервісу. Вони не технарі.\\nМова: українська.\\nОбсяг: __LEN__ символів. Жорстка межа — не більше 950 символів разом із пробілами.\\n\\nСтиль — дуже просто, для бізнесу:\\n- Короткі речення. Пиши як людина, а не як прес-реліз.\\n- Без технічного жаргону. Якщо термін необхідний — поясни його простими словами в пів речення.\\n- Мова бізнес-вигод: гроші, час, клієнти, ROI, економія, менше втрат, більше продажів.\\n\\nФормат:\\n- Розбий текст на 2-4 короткі абзаци з порожнім рядком між ними.\\n- Додай 2-3 доречні емодзі: один у заголовку, по одному на ключових абзацах. Не більше.\\n- Без markdown-форматування і хештегів. Не вставляй URL у текст — посилання на джерело додається автоматично після посту.\\n\\nСтруктура посту:\\n1. Чіпкий заголовок з емодзі (1 рядок).\\n2. Суть простими словами: що сталося і чому це важливо.\\n3. Практичний висновок: що це дає бізнесу — власнику магазину, ритейлеру, e-commerce.\\n4. Коротке питання до читачів у кінці (опційно).\\n\\nЯкщо джерело — дослідження, звіт або наукова стаття (Arxiv, McKinsey, університети, аналітичні агенції):\\n- подай пост як превʼю дослідження: 2-3 найцікавіші цифри або висновки;\\n- обовʼязково назви, чиє це дослідження (компанія/університет);\\n- додай одне речення власної думки: що це означає для бізнесу вже зараз.\\n\\nТематика каналу: ритейл та e-commerce (персоналізація, прогнозування попиту, динамічні ціни, рекомендації), впровадження AI у бізнесі (кейси, ROI, помилки), Computer Vision і відео/аудіо аналітика (розпізнавання, контроль якості, черги, безпека — це профіль AI News Bot Vision), дані й аналітика, автоматизація процесів і RPA, кібербезпека та ризики AI, прикладні дослідження з користю для бізнесу.\\n\\n__PROMO__\\nБудь чесний: якщо це реклама AI-інструменту, оціни критично.\".replace('__LEN__', len).replace('__PROMO__', promoLine);\nreturn items.map(it => ({ json: {\n  link: it.json.link,\n  title: it.json.title,\n  imageUrl: it.json.imageUrl || null,\n  systemPrompt: baseSystem('600-850'),\n  userPrompt: `Напиши пост за цим матеріалом:\nЗаголовок: ${it.json.title}\nЗміст: ${it.json.content}\nДжерело: ${it.json.link}\n${it.json.isResearch ? '\\nЦе нішеве дослідження/звіт. Оформи пост як превʼю дослідження: назви, чиє це дослідження, наведи 2-3 найцікавіші цифри або висновки і додай одне речення власної думки — що це означає для бізнесу вже зараз.' : ''}\nЗроби його корисним для бізнесу з акцентом на практичну цінність для ритейлу, e-commerce, Computer Vision, даних, автоматизації або кібербезпеки.`\n}}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        192
+      ],
+      "id": "0e76fa89-4bc2-44c6-93fa-0444566fe6d8",
+      "name": "Промпт"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "openai/gpt-oss-120b",
+          "mode": "id"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.systemPrompt }}",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.userPrompt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        544,
+        192
+      ],
+      "id": "68141b18-077d-4a8e-b910-2159d01d1501",
+      "name": "LLM генерація",
+      "credentials": {
+        "openAiApi": {
+          "id": "GjkTLSKRCwmom32n",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_ID",
+        "text": "={{ $json.message.content }}\n\n🔗 {{ $('Промпт').item.json.link }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Опублікувати",
+                    "additionalFields": {
+                      "callback_data": "approve"
+                    }
+                  },
+                  {
+                    "text": "✏️ Редагувати",
+                    "additionalFields": {
+                      "callback_data": "edit"
+                    }
+                  },
+                  {
+                    "text": "❌ Відхилити",
+                    "additionalFields": {
+                      "callback_data": "reject"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "disable_web_page_preview": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        768,
+        192
+      ],
+      "id": "9f063a0e-02d5-4b10-919e-649db2f33f12",
+      "name": "На модерацію",
+      "webhookId": "31650b3b-0fc6-4ba3-a10d-3cd9c34c73ec",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.link }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -224,
+        32
+      ],
+      "id": "d1920897-d85c-4f2d-ad3f-b5bf53017279",
+      "name": "Сторінка статті",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const src = $('Дедуплікація').all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const html = items[i].json.data || '';\n  let img = null;\n  const m = html.match(/property=[\"']og:image[\"'][^>]*content=[\"']([^\"']+)[\"']/i) || html.match(/content=[\"']([^\"']+)[\"'][^>]*property=[\"']og:image[\"']/i);\n  if (m && !/logo|favicon/i.test(m[1])) img = m[1];\n  const orig = src[i] ? src[i].json : {};\n  out.push({ json: { title: orig.title, link: orig.link, content: orig.content, imageUrl: img } });\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "37b5241e-99dc-4fb1-a5a9-6667eb8b4647",
+      "name": "Зображення"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Промпт').item.json.imageUrl ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        304,
+        208
+      ],
+      "id": "776c12e8-5dce-4d09-98e9-4cf7a5f219e2",
+      "name": "Є фото?"
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "YOUR_TELEGRAM_ID",
+        "file": "={{ $('Промпт').item.json.imageUrl }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Опублікувати",
+                    "additionalFields": {
+                      "callback_data": "approve"
+                    }
+                  },
+                  {
+                    "text": "✏️ Редагувати",
+                    "additionalFields": {
+                      "callback_data": "edit"
+                    }
+                  },
+                  {
+                    "text": "❌ Відхилити",
+                    "additionalFields": {
+                      "callback_data": "reject"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "caption": "={{ ($json.message.content || '').slice(0, 820) }}\n\n🔗 {{ $('Промпт').item.json.link }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        512,
+        128
+      ],
+      "id": "5903b1e2-702b-4193-8f67-6d71ac24336c",
+      "name": "На модерацію (фото)",
+      "webhookId": "0417d1d1-b1d7-4c2d-b15a-80a09a7a54fb",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(function(it){\n  var p = encodeURIComponent('abstract futuristic AI technology concept, glowing digital neural network, flowing data streams, dark navy and cyan corporate palette, minimalist clean professional, no people, no faces, no text, 3d render');\n  return { json: { coverUrl: 'https://image.pollinations.ai/prompt/' + p + '?width=1024&height=576&model=flux&nologo=true&seed=' + Math.floor(Math.random()*99999) } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        368
+      ],
+      "id": "7ca2a4ba-36ea-49ce-8a70-8dbc1ac9607b",
+      "name": "URL обкладинки"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.coverUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 280000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        736,
+        368
+      ],
+      "id": "c220c01d-0aef-443b-b956-36ca273acc39",
+      "name": "Генерація обкладинки",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "YOUR_TELEGRAM_ID",
+        "binaryData": true,
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Опублікувати",
+                    "additionalFields": {
+                      "callback_data": "approve"
+                    }
+                  },
+                  {
+                    "text": "✏️ Редагувати",
+                    "additionalFields": {
+                      "callback_data": "edit"
+                    }
+                  },
+                  {
+                    "text": "❌ Відхилити",
+                    "additionalFields": {
+                      "callback_data": "reject"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "caption": "={{ ($('LLM генерація').item.json.message.content || '').slice(0, 820) }}\n\n🔗 {{ $('Промпт').item.json.link }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        368
+      ],
+      "id": "7a11a6dc-ffa2-4575-9f06-7638ad7ec330",
+      "name": "На модерацію (обкладинка)",
+      "webhookId": "c0cfe252-aebf-4592-93b8-29292131b0ca",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"query\": \"latest AI for business news: computer vision, generative AI, process automation, LLM enterprise use cases, ROI case studies 2026\",\n  \"topic\": \"news\",\n  \"days\": 2,\n  \"max_results\": 10,\n  \"search_depth\": \"basic\",\n  \"include_answer\": false,\n  \"include_raw_content\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -560,
+        416
+      ],
+      "id": "5b872437-62fb-4658-9f7b-747c83366d58",
+      "name": "Пошук Tavily",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json || {};\nconst results = Array.isArray(r.results) ? r.results : [];\nreturn results.map(x => ({ json: {\n  title: x.title,\n  link: x.url,\n  contentSnippet: (x.content || '').slice(0, 1500),\n  pubDate: x.published_date || null\n}}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        416
+      ],
+      "id": "8b9ee1e0-966b-4091-9e4a-48fce8cdd496",
+      "name": "Tavily → формат"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -208,
+        304
+      ],
+      "id": "795f9804-c223-4b39-a8a0-2fbc0098bf5b",
+      "name": "Об'єднати джерела"
+    },
+    {
+      "parameters": {
+        "content": "## Tavily пошук\nAPI-ключ уже вшито в заголовок ноди **Пошук Tavily** (Authorization: Bearer ...).\nНічого додатково налаштовувати не треба.\n\nЯкщо ключ зміниться — онови його в полі Header Parameters цієї ноди.",
+        "height": 220,
+        "width": 300,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        560
+      ],
+      "id": "3bdbe1a5-4ce6-40a5-aa7a-7b62f1bc0cba",
+      "name": "Sticky Note Tavily"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"query\": \"in-depth AI research studies and reports for business 2026: McKinsey, BCG, Deloitte, Gartner, MIT, Stanford HAI, a16z on generative AI ROI, enterprise LLM adoption, computer vision retail, automation impact\",\n  \"topic\": \"general\",\n  \"days\": 30,\n  \"max_results\": 8,\n  \"search_depth\": \"advanced\",\n  \"include_answer\": false,\n  \"include_raw_content\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -560,
+        640
+      ],
+      "id": "dea37600-910a-46c4-b664-7933d0637a41",
+      "name": "Пошук досліджень (Tavily)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json || {};\nconst results = Array.isArray(r.results) ? r.results : [];\nconst now = new Date().toISOString();\nreturn results.map(x => ({ json: {\n  title: x.title,\n  link: x.url,\n  contentSnippet: (x.content || '').slice(0, 1500),\n  pubDate: x.published_date || now,\n  isResearch: true\n}}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        640
+      ],
+      "id": "020d08b0-a8f9-4c27-a2bf-45e72f82e672",
+      "name": "Дослідження → формат"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Кожні 6 годин": {
+      "main": [
+        [
+          {
+            "node": "Список джерел",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Пошук Tavily",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Пошук досліджень (Tavily)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Список джерел": {
+      "main": [
+        [
+          {
+            "node": "RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS": {
+      "main": [
+        [
+          {
+            "node": "Об'єднати джерела",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Фільтр і скоринг": {
+      "main": [
+        [
+          {
+            "node": "Дедуплікація",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Промпт": {
+      "main": [
+        [
+          {
+            "node": "LLM генерація",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM генерація": {
+      "main": [
+        [
+          {
+            "node": "Є фото?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сторінка статті": {
+      "main": [
+        [
+          {
+            "node": "Зображення",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Зображення": {
+      "main": [
+        [
+          {
+            "node": "Промпт",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Є фото?": {
+      "main": [
+        [
+          {
+            "node": "На модерацію (фото)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "URL обкладинки",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Дедуплікація": {
+      "main": [
+        [
+          {
+            "node": "Сторінка статті",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "URL обкладинки": {
+      "main": [
+        [
+          {
+            "node": "Генерація обкладинки",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Генерація обкладинки": {
+      "main": [
+        [
+          {
+            "node": "На модерацію (обкладинка)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "На модерацію",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Пошук Tavily": {
+      "main": [
+        [
+          {
+            "node": "Tavily → формат",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily → формат": {
+      "main": [
+        [
+          {
+            "node": "Об'єднати джерела",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Об'єднати джерела": {
+      "main": [
+        [
+          {
+            "node": "Фільтр і скоринг",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Пошук досліджень (Tavily)": {
+      "main": [
+        [
+          {
+            "node": "Дослідження → формат",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Дослідження → формат": {
+      "main": [
+        [
+          {
+            "node": "Об'єднати джерела",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "58c451f1-d4f6-49c0-8649-a87a192ba650",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "143a338ed9fd06f16118b764a932e0489b011ec6c802296cae89f5bc112e0cfb"
+  },
+  "nodeGroups": [],
+  "id": "5BR32UNVVeaf9Roy",
+  "tags": []
+}

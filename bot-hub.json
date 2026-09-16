@@ -1,0 +1,1641 @@
+{
+  "name": "Telegram Content Bot — Hub",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2368,
+        848
+      ],
+      "id": "7579c8d6-24f7-4866-8589-b1fa613e6eed",
+      "name": "Telegram Trigger",
+      "webhookId": "2807786c-8f70-4575-850b-e3719a6fcd62",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const u = $input.first().json;\nlet kind = 'other';\nif (u.callback_query) kind = 'callback';\nelse if (u.message && u.message.voice) kind = 'voice';\nelse if (u.message && u.message.photo) kind = (u.message.caption ? 'photo' : 'photo_nocap');\nelse if (u.message && u.message.text) kind = 'text';\nconst allowed = [YOUR_TELEGRAM_ID, 916602267];\nconst fromId = u.callback_query ? u.callback_query.from.id : (u.message && u.message.from ? u.message.from.id : 0);\nif (!allowed.includes(fromId)) kind = 'unauthorized';\nlet text = (u.message && u.message.text) ? u.message.text : ((u.message && u.message.caption) ? u.message.caption : '');\nlet videoUrl = null, editOriginal = null, editPhotoId = null;\nif (kind === 'photo') {\n  if (u.message.caption) { editPhotoId = u.message.photo.slice(-1)[0].file_id; text = u.message.caption; }\n  else kind = 'photo_nocaption';\n}\nif (kind === 'photo') { editPhotoId = u.message.photo.slice(-1)[0].file_id; }\nif (kind === 'text') {\n  const m = text.match(/https?:\\/\\/\\S+\\.(mp4|mov|webm|m4v)(\\?\\S*)?/i);\n  if (m) { videoUrl = m[0]; kind = 'video'; text = text.replace(m[0], '').trim(); }\n  const rt = u.message.reply_to_message;\n  if (rt && rt.from && rt.from.is_bot) {\n    const rtText = rt.text || rt.caption || '';\n    if (/причину відхилення/i.test(rtText)) {\n      kind = 'reject_comment';\n    } else {\n      kind = 'edit';\n      editOriginal = rtText;\n      if (rt.photo) editPhotoId = rt.photo.slice(-1)[0].file_id;\n    }\n  }\n}\nreturn [{ json: { kind, fromId, userText: text.replace(/^\\/post\\s*/i, ''), videoUrl, editOriginal, editPhotoId, update: u } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2144,
+        848
+      ],
+      "id": "30cbd7c9-61d6-4238-b66e-63500540bddd",
+      "name": "Класифікація"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "callback",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "callback"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "voice",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "voice"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "photo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "photo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "video",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "video"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "edit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "edit"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "photo_nocap",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "photo_nocap"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "photo_nocaption",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "photo_nocaption"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "reject_comment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reject_comment"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1920,
+        848
+      ],
+      "id": "ec743e41-d2b4-4192-94cc-e97a58087172",
+      "name": "Маршрут"
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $json.update.callback_query.id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1712,
+        544
+      ],
+      "id": "91c40148-82d2-4535-9fc4-6be4f2f1a77e",
+      "name": "Відповідь на callback",
+      "webhookId": "36bfaa97-01c7-438b-8531-7a28c59807e7",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "@aiworldnetwork",
+        "text": "={{ ($('Класифікація').first().json.update.callback_query.message.text || '').trim() }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1264,
+        464
+      ],
+      "id": "1767b466-2fa8-4d7c-9738-3072d387997b",
+      "name": "Публікація в канал",
+      "webhookId": "5633c41b-a970-43de-8dd1-6e74427498d9",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $('Класифікація').first().json.update.callback_query.message.chat.id }}",
+        "messageId": "={{ $('Класифікація').first().json.update.callback_query.message.message_id }}",
+        "text": "={{ $('Класифікація').first().json.update.callback_query.message.text }}\n\n✅ Опубліковано",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1040,
+        464
+      ],
+      "id": "61e39e20-8317-4591-8ed6-02c19026f455",
+      "name": "Позначити опубліковано",
+      "webhookId": "8b0dc3df-2377-462e-bc3b-f3f3becebeb4",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $('Класифікація').first().json.update.callback_query.message.chat.id }}",
+        "messageId": "={{ $('Класифікація').first().json.update.callback_query.message.message_id }}",
+        "text": "={{ $('Класифікація').first().json.update.callback_query.message.text }}\n\n❌ Відхилено",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1264,
+        624
+      ],
+      "id": "52f62d6f-feb8-46f2-bd35-f148e1a88d37",
+      "name": "Позначити відхилено",
+      "webhookId": "e16649d7-191a-44ef-8c33-df61353bf29b",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.update.message.voice.file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1712,
+        768
+      ],
+      "id": "8562b09a-0566-4bf3-8b33-fc4ba5edd84f",
+      "name": "Voice файл",
+      "webhookId": "0830a62f-81d6-4391-bb73-713cd89a13e5",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "whisper-large-v3"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1488,
+        768
+      ],
+      "id": "dd3cbeeb-3c9f-4858-916e-5f9cd0294357",
+      "name": "Транскрипція",
+      "credentials": {
+        "openAiApi": {
+          "id": "GjkTLSKRCwmom32n",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { userText: $input.first().json.text || '' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1264,
+        768
+      ],
+      "id": "0af8ada5-9b68-4567-a7e5-e4e84ca6c313",
+      "name": "Текст із voice"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.fromId }}",
+        "text": "📷 Додай до фото підпис — про що зробити пост? Надішли фото ще раз із описом.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1712,
+        1056
+      ],
+      "id": "a24f9121-b7e9-462f-93d2-ab3e8c04c453",
+      "name": "Фото: відповідь",
+      "webhookId": "d9944597-d572-4ade-babc-ab99711a9f09",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const includePromo = Math.random() < 0.2;\nconst promoLine = includePromo\n  ? 'Наприкінці посту додай ОДНЕ коротке ненав\\'язливе речення про AI News Bot: компанія впроваджує AI-рішення, Computer Vision та відео/аудіо аналітику для бізнесу.'\n  : 'НЕ згадуй компанію AI News Bot у тексті цього посту — без жодної реклами.';\nconst j = $input.first().json;\nconst len = (j.videoUrl || j.editPhotoId) ? '600-850' : '900-1600';\nconst system = \"Ти — редактор Telegram-каналу «AI Love You» компанії AI News Bot (example.com, example.com). Пишеш про практичний AI для бізнесу.\\n\\nАудиторія: власники бізнесу, директори, маркетологи, керівники ритейлу, e-commerce, логістики, сервісу. Вони не технарі.\\nМова: українська.\\nОбсяг: __LEN__ символів. Жорстка межа — не більше 950 символів разом із пробілами.\\n\\nСтиль — дуже просто, для бізнесу:\\n- Короткі речення. Пиши як людина, а не як прес-реліз.\\n- Без технічного жаргону. Якщо термін необхідний — поясни його простими словами в пів речення.\\n- Мова бізнес-вигод: гроші, час, клієнти, ROI, економія, менше втрат, більше продажів.\\n\\nФормат:\\n- Розбий текст на 2-4 короткі абзаци з порожнім рядком між ними.\\n- Додай 2-3 доречні емодзі: один у заголовку, по одному на ключових абзацах. Не більше.\\n- Без markdown-форматування і хештегів. Не вставляй URL у текст — посилання на джерело додається автоматично після посту.\\n\\nСтруктура посту:\\n1. Чіпкий заголовок з емодзі (1 рядок).\\n2. Суть простими словами: що сталося і чому це важливо.\\n3. Практичний висновок: що це дає бізнесу — власнику магазину, ритейлеру, e-commerce.\\n4. Коротке питання до читачів у кінці (опційно).\\n\\nЯкщо джерело — дослідження, звіт або наукова стаття (Arxiv, McKinsey, університети, аналітичні агенції):\\n- подай пост як превʼю дослідження: 2-3 найцікавіші цифри або висновки;\\n- обовʼязково назви, чиє це дослідження (компанія/університет);\\n- додай одне речення власної думки: що це означає для бізнесу вже зараз.\\n\\nТематика каналу: ритейл та e-commerce (персоналізація, прогнозування попиту, динамічні ціни, рекомендації), впровадження AI у бізнесі (кейси, ROI, помилки), Computer Vision і відео/аудіо аналітика (розпізнавання, контроль якості, черги, безпека — це профіль AI News Bot Vision), дані й аналітика, автоматизація процесів і RPA, кібербезпека та ризики AI, прикладні дослідження з користю для бізнесу.\\n\\n__PROMO__\\nБудь чесний: якщо це реклама AI-інструменту, оціни критично.\".replace('__LEN__', len).replace('__PROMO__', promoLine);\nlet userPrompt;\nif (j.kind === 'edit') {\n  userPrompt = `Ось поточна версія посту:\n---\n${j.editOriginal}\n---\nПравки від редактора: ${j.userText}\n\nПерепиши пост з урахуванням правок, зберігаючи стиль і формат каналу.`;\n} else {\n  userPrompt = `Напиши пост для каналу за цією ідеєю від команди:\n${j.userText || ''}\n\nЗроби його корисним для бізнесу з акцентом на практичну цінність для ритейлу, e-commerce, Computer Vision, даних, автоматизації або кібербезпеки.`;\n}\nreturn [{ json: { systemPrompt: system, userPrompt, videoUrl: j.videoUrl || null, editPhotoId: j.editPhotoId || null } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        848
+      ],
+      "id": "64e1a9d2-6bcc-4506-b676-0cd40c64687c",
+      "name": "Промпт"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "openai/gpt-oss-120b",
+          "mode": "id"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.systemPrompt }}",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.userPrompt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -816,
+        848
+      ],
+      "id": "6bd1adff-fc64-4b99-8258-2775484d4d5b",
+      "name": "LLM генерація",
+      "credentials": {
+        "openAiApi": {
+          "id": "GjkTLSKRCwmom32n",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Класифікація').first().json.fromId }}",
+        "file": "=https://image.pollinations.ai/prompt/{{ encodeURIComponent('abstract futuristic AI technology concept, glowing digital neural network, flowing data streams, dark navy and cyan corporate palette, minimalist clean professional, no people, no faces, no text, 3d render') }}?width=1024&height=576&model=flux&nologo=true&seed={{ Math.floor(Math.random()*99999) }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Опублікувати",
+                    "additionalFields": {
+                      "callback_data": "approve"
+                    }
+                  },
+                  {
+                    "text": "✏️ Редагувати",
+                    "additionalFields": {
+                      "callback_data": "edit"
+                    }
+                  },
+                  {
+                    "text": "❌ Відхилити",
+                    "additionalFields": {
+                      "callback_data": "reject"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "caption": "={{ ($json.message.content || '').slice(0, 820) }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -592,
+        848
+      ],
+      "id": "14ae39c7-f474-4e77-99b8-b0936e0f73b9",
+      "name": "На модерацію",
+      "webhookId": "52bca479-cd35-4ce4-ab58-d5e1f315f9d3",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "@aiworldnetwork",
+        "file": "={{ $('Класифікація').first().json.update.callback_query.message.photo.slice(-1)[0].file_id }}",
+        "additionalFields": {
+          "caption": "={{ ($('Класифікація').first().json.update.callback_query.message.caption || '').trim() }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "3838aa5f-308b-4a20-825d-a217d4d3f2ea",
+      "name": "Публікація фото в канал",
+      "webhookId": "f472a701-394c-4b97-a6e6-cdd1f0c391d5",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Класифікація').first().json.update.callback_query.message.chat.id }}",
+        "text": "✅ Опубліковано",
+        "additionalFields": {
+          "appendAttribution": false,
+          "reply_to_message_id": "={{ $('Класифікація').first().json.update.callback_query.message.message_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "91bb1b21-340f-4ce4-9430-df1d9f56ec7b",
+      "name": "Підтвердження (фото)",
+      "webhookId": "0a1c70ef-2815-4ed3-a8b0-4ab02e38a587",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ ($('Класифікація').first().json.update.callback_query.message.photo || $('Класифікація').first().json.update.callback_query.message.video) ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -224,
+        352
+      ],
+      "id": "80a35376-cc32-4fae-931b-67f33287f306",
+      "name": "Фото-пост? (відхил.)"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Класифікація').first().json.update.callback_query.message.chat.id }}",
+        "text": "❌ Відхилено",
+        "additionalFields": {
+          "appendAttribution": false,
+          "reply_to_message_id": "={{ $('Класифікація').first().json.update.callback_query.message.message_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        480
+      ],
+      "id": "dff65404-1b81-4f67-93f4-fb7c0719d3fb",
+      "name": "Відхилено (фото)",
+      "webhookId": "4718227c-c66d-44d7-b600-1a9f3f8ab46e",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Класифікація').first().json.update.callback_query.data }}",
+                    "rightValue": "approve",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "approve"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Класифікація').first().json.update.callback_query.data }}",
+                    "rightValue": "reject",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reject"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Класифікація').first().json.update.callback_query.data }}",
+                    "rightValue": "edit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "edit"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -448,
+        240
+      ],
+      "id": "895805ab-b78b-4c2b-8eec-80af8c821951",
+      "name": "Дія"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Класифікація').first().json.update.callback_query.message.photo ? 'photo' : ($('Класифікація').first().json.update.callback_query.message.video ? 'video' : 'text') }}",
+                    "rightValue": "photo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "photo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Класифікація').first().json.update.callback_query.message.photo ? 'photo' : ($('Класифікація').first().json.update.callback_query.message.video ? 'video' : 'text') }}",
+                    "rightValue": "video",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "video"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -224,
+        80
+      ],
+      "id": "3469c51a-52b3-49ab-94da-5a104517d539",
+      "name": "Тип посту"
+    },
+    {
+      "parameters": {
+        "operation": "sendVideo",
+        "chatId": "@aiworldnetwork",
+        "file": "={{ $('Класифікація').first().json.update.callback_query.message.video.file_id }}",
+        "additionalFields": {
+          "caption": "={{ ($('Класифікація').first().json.update.callback_query.message.caption || '').trim() }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        176
+      ],
+      "id": "5185fe8a-a52c-4524-8d3e-54d2ddf4ebe4",
+      "name": "Публікація відео в канал",
+      "webhookId": "9f9ba8ea-7131-4138-bff9-cc91159d4c2a",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Класифікація').first().json.update.callback_query.message.chat.id }}",
+        "text": "✏️ Надішли виправлення відповіддю (Reply) на пост, який треба змінити.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -224,
+        480
+      ],
+      "id": "15b1ae1e-5124-40c5-b34c-541ff71b45d3",
+      "name": "Запит правок",
+      "webhookId": "71161669-a003-4409-99c7-61aac68550e1",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Промпт').item.json.videoUrl ? 'video' : ($('Промпт').item.json.editPhotoId ? 'photo' : 'text') }}",
+                    "rightValue": "video",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "video"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Промпт').item.json.videoUrl ? 'video' : ($('Промпт').item.json.editPhotoId ? 'photo' : 'text') }}",
+                    "rightValue": "photo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "photo"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        432,
+        384
+      ],
+      "id": "7a9e2284-fd73-4ba3-a1f4-9b696e72b728",
+      "name": "Медіа модерації"
+    },
+    {
+      "parameters": {
+        "operation": "sendVideo",
+        "chatId": "={{ $('Класифікація').first().json.fromId }}",
+        "file": "={{ $('Промпт').item.json.videoUrl }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Опублікувати",
+                    "additionalFields": {
+                      "callback_data": "approve"
+                    }
+                  },
+                  {
+                    "text": "✏️ Редагувати",
+                    "additionalFields": {
+                      "callback_data": "edit"
+                    }
+                  },
+                  {
+                    "text": "❌ Відхилити",
+                    "additionalFields": {
+                      "callback_data": "reject"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "caption": "={{ ($json.message.content || '').slice(0, 820) }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        656,
+        256
+      ],
+      "id": "56d8a8f8-72dc-40c6-ab2b-3b55224571bd",
+      "name": "На модерацію (відео)",
+      "webhookId": "9c4b8ff3-7223-4df3-ba8d-b4748574913f",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Класифікація').first().json.fromId }}",
+        "file": "={{ $('Промпт').item.json.editPhotoId }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Опублікувати",
+                    "additionalFields": {
+                      "callback_data": "approve"
+                    }
+                  },
+                  {
+                    "text": "✏️ Редагувати",
+                    "additionalFields": {
+                      "callback_data": "edit"
+                    }
+                  },
+                  {
+                    "text": "❌ Відхилити",
+                    "additionalFields": {
+                      "callback_data": "reject"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "caption": "={{ ($json.message.content || '').slice(0, 820) }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        704,
+        448
+      ],
+      "id": "ba469142-c4c2-4f8c-ba28-af8b993afa16",
+      "name": "На модерацію (фото-правка)",
+      "webhookId": "ee458c6a-2d2a-4084-8907-5b3deb117e5d",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items=$input.all();\nfor(const item of items){ if(item.binary){ for(const k of Object.keys(item.binary)){ item.binary[k].fileName='voice.ogg'; item.binary[k].mimeType='audio/ogg'; item.binary[k].fileExtension='ogg'; } } }\nreturn items;"
+      },
+      "id": "10dba410-c496-400e-b203-e1608b5ec9ea",
+      "name": "Voice → ogg",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1600,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Класифікація').first().json.update.callback_query.message.chat.id }}",
+        "text": "📝 Вкажи причину відхилення — відповідай (Reply) на це повідомлення. Якщо причина не потрібна, просто ігноруй.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -688,
+        672
+      ],
+      "id": "95b1edac-7169-4500-8488-39f121adfbeb",
+      "name": "Запит причини (відхил.)",
+      "webhookId": "aff1dd61-03fd-4665-976d-dacdf659814b",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Класифікація').first().json.update.message.chat.id }}",
+        "text": "📌 Причину відхилення збережено: {{ $('Класифікація').first().json.userText }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "reply_to_message_id": "={{ $('Класифікація').first().json.update.message.message_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1712,
+        1008
+      ],
+      "id": "30fdb7f0-80cd-4f50-b85d-2a49f434027d",
+      "name": "Причину збережено",
+      "webhookId": "692d0552-06e2-441c-8f65-aede8a70b681",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"api_key\": \"tvly-YOUR_TAVILY_KEY\",\n  \"query\": \"{{ $json.userText }}\",\n  \"topic\": \"news\",\n  \"days\": 14,\n  \"max_results\": 5,\n  \"search_depth\": \"basic\",\n  \"include_images\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1712,
+        1312
+      ],
+      "id": "0114ebc0-d199-4073-8069-7f514ca98d4f",
+      "name": "Пошук новин (Tavily)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nconst results = r.results || [];\nconst top = results[0] || {};\nconst images = r.images || [];\nconst ut = $('Класифікація').first().json.userText;\nreturn [{ json: {\n  userText: ut,\n  title: top.title || '',\n  url: top.url || '',\n  content: (top.content || '').slice(0, 2000),\n  tavilyImage: images.length ? images[0] : null\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1488,
+        1312
+      ],
+      "id": "1c35b8e5-e4ce-4165-86df-c133f6d3cdf6",
+      "name": "Вибір статті"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1264,
+        1312
+      ],
+      "id": "b66c32ef-241e-487a-a44e-b8fccfb18208",
+      "name": "Сторінка статті",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const src = $('Вибір статті').first().json;\nconst html = String(($input.first().json && ($input.first().json.data || $input.first().json.body)) || '');\nlet m = html.match(/property=[\"']og:image[\"'][^>]*content=[\"']([^\"']+)[\"']/i) || html.match(/content=[\"']([^\"']+)[\"'][^>]*property=[\"']og:image[\"']/i);\nlet cand = (m && m[1]) || src.tavilyImage || null;\nif (cand && !/^https?:\\/\\//i.test(cand)) cand = null;\nif (cand && !/\\.(jpe?g|png)(\\?|$)/i.test(cand)) cand = null;\nif (cand && /logo|favicon|sprite|placeholder/i.test(cand)) cand = null;\nconst imageUrl = cand;\nreturn [{ json: { userText: src.userText, title: src.title, url: src.url, content: src.content, imageUrl } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        1312
+      ],
+      "id": "3d969538-4bd6-4dc7-ad65-6d4202bb1936",
+      "name": "Зображення (бот)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $input.first().json;\nconst system = \"Ти — редактор україномовного Telegram-каналу з цікавими новинами. Пишеш живі, зрозумілі пости для широкої аудиторії.\\n\\nМова: українська.\\nОбсяг: 700-1200 символів. Жорстка межа — не більше 950 символів разом із пробілами.\\n\\nСтиль:\\n- Короткі речення, простими словами, як жива людина.\\n- Без жаргону, без води, без клікбейту.\\n- Нейтрально й чесно передавай суть новини.\\n\\nФормат:\\n- Чіпкий заголовок з одним доречним емодзі (1 рядок).\\n- 2-4 короткі абзаци з порожнім рядком між ними.\\n- 2-3 доречні емодзі загалом, не більше.\\n- Без markdown, без хештегів, без URL у тексті (посилання додається окремо).\\n\\nСтруктура:\\n1. Заголовок з емодзі.\\n2. Що сталося — суть новини простими словами.\\n3. Чому це цікаво / що це означає.\\n4. Коротке питання до читачів у кінці (опційно).\\n\\nПиши ЛИШЕ на основі наданої статті. Не вигадуй фактів, яких немає в джерелі. Без реклами й без згадок будь-яких компаній, якщо їх нема в новині.\";\nconst userPrompt = `Тема від користувача: ${j.userText || ''}\\n\\nЗнайдена свіжа стаття:\\nЗаголовок: ${j.title || ''}\\nЗміст: ${j.content || ''}\\n\\nНапиши пост для каналу на основі цієї новини.`;\nreturn [{ json: { systemPrompt: system, userPrompt, imageUrl: j.imageUrl || null, url: j.url || '', title: j.title || '' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -816,
+        1312
+      ],
+      "id": "ca1a8439-8052-4e51-ac82-475e73a9e802",
+      "name": "Промпт (новини)"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "openai/gpt-oss-120b",
+          "mode": "id"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.systemPrompt }}",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.userPrompt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -592,
+        1312
+      ],
+      "id": "98bb75a0-9a0b-4b67-a365-0461d229a459",
+      "name": "LLM (новини)",
+      "credentials": {
+        "openAiApi": {
+          "id": "GjkTLSKRCwmom32n",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Класифікація').first().json.fromId }}",
+        "file": "={{ $('Промпт (новини)').item.json.imageUrl || ('https://image.pollinations.ai/prompt/' + encodeURIComponent('editorial news illustration, ' + ($('Промпт (новини)').item.json.title || 'news') + ', clean modern, no text, no watermark') + '?width=1024&height=576&model=flux&nologo=true&seed=' + Math.floor(Math.random()*99999)) }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Опублікувати",
+                    "additionalFields": {
+                      "callback_data": "approve"
+                    }
+                  },
+                  {
+                    "text": "✏️ Редагувати",
+                    "additionalFields": {
+                      "callback_data": "edit"
+                    }
+                  },
+                  {
+                    "text": "❌ Відхилити",
+                    "additionalFields": {
+                      "callback_data": "reject"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "caption": "={{ (($json.message.content || '').slice(0,820)) + ($('Промпт (новини)').item.json.url ? ('\\n\\n🔗 ' + $('Промпт (новини)').item.json.url) : '') }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -368,
+        1312
+      ],
+      "id": "1ba2dcac-8694-4b78-9386-32f205eb22fc",
+      "name": "На модерацію (новини)",
+      "webhookId": "news-mod-webhook-0007",
+      "credentials": {
+        "telegramApi": {
+          "id": "LlAW7jtCMv79KWxU",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Класифікація",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Класифікація": {
+      "main": [
+        [
+          {
+            "node": "Маршрут",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Маршрут": {
+      "main": [
+        [
+          {
+            "node": "Відповідь на callback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Voice файл",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Пошук новин (Tavily)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Промпт",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Промпт",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Промпт",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Фото: відповідь",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        [
+          {
+            "node": "Причину збережено",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Відповідь на callback": {
+      "main": [
+        [
+          {
+            "node": "Дія",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Публікація в канал": {
+      "main": [
+        [
+          {
+            "node": "Позначити опубліковано",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice файл": {
+      "main": [
+        [
+          {
+            "node": "Voice → ogg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Транскрипція": {
+      "main": [
+        [
+          {
+            "node": "Текст із voice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Текст із voice": {
+      "main": [
+        [
+          {
+            "node": "Промпт",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Промпт": {
+      "main": [
+        [
+          {
+            "node": "LLM генерація",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM генерація": {
+      "main": [
+        [
+          {
+            "node": "Медіа модерації",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Публікація фото в канал": {
+      "main": [
+        [
+          {
+            "node": "Підтвердження (фото)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Фото-пост? (відхил.)": {
+      "main": [
+        [
+          {
+            "node": "Відхилено (фото)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Позначити відхилено",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Дія": {
+      "main": [
+        [
+          {
+            "node": "Тип посту",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Фото-пост? (відхил.)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Запит причини (відхил.)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Запит правок",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Тип посту": {
+      "main": [
+        [
+          {
+            "node": "Публікація фото в канал",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Публікація відео в канал",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Публікація в канал",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Публікація відео в канал": {
+      "main": [
+        [
+          {
+            "node": "Підтвердження (фото)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Медіа модерації": {
+      "main": [
+        [
+          {
+            "node": "На модерацію (відео)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "На модерацію (фото-правка)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "На модерацію",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice → ogg": {
+      "main": [
+        [
+          {
+            "node": "Транскрипція",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Пошук новин (Tavily)": {
+      "main": [
+        [
+          {
+            "node": "Вибір статті",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Вибір статті": {
+      "main": [
+        [
+          {
+            "node": "Сторінка статті",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сторінка статті": {
+      "main": [
+        [
+          {
+            "node": "Зображення (бот)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Зображення (бот)": {
+      "main": [
+        [
+          {
+            "node": "Промпт (новини)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Промпт (новини)": {
+      "main": [
+        [
+          {
+            "node": "LLM (новини)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM (новини)": {
+      "main": [
+        [
+          {
+            "node": "На модерацію (новини)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "54f27be8-0fbe-4074-b955-47cf8d3ed1bd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "143a338ed9fd06f16118b764a932e0489b011ec6c802296cae89f5bc112e0cfb"
+  },
+  "nodeGroups": [],
+  "id": "rZJBQYFtPB259SnT",
+  "tags": []
+}
